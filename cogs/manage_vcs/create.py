@@ -24,44 +24,157 @@ def _next_temp_channel_count(bot, creator_channel_id, temp_channel_id, guild_nam
     return count
 
 
-async def _notify_if_missing_guild_permissions(member, creator_channel, category, guild_name):
-    permissions_to_check = [
-        "manage_channels",
-        "manage_roles",
-        "view_channel",
-        "send_messages",
-        "connect",
-        "move_members",
-        "manage_messages",
-        "read_message_history"
-    ]
-    has_all_perms = True
-    missing_permissions = []
-    for perm in permissions_to_check:
-        has_perm = getattr(member.guild.me.guild_permissions, perm, False)
-        if not has_perm:
-            has_all_perms = False
-            missing_permissions.append(perm)
+REQUIRED_PERMISSIONS = (
+    "view_channel",
+    "manage_channels",
+    "manage_roles",
+    "send_messages",
+    "embed_links",
+    "manage_messages",
+    "read_message_history",
+    "connect",
+    "move_members",
+)
+REQUIRED_PERMISSIONS_DISPLAY = ", ".join(f"`{perm}`" for perm in REQUIRED_PERMISSIONS)
+MAX_OVERWRITE_ISSUES = 10
+EMBED_FIELD_LIMIT = 1024
 
-    if not has_all_perms:
-        logger.warning(
-            f"Missing guild permissions to create temp channel for {member} in guild '{guild_name}', aborting. "
-            f"Missing: {', '.join(missing_permissions)}"
+
+def _overwrite_target_label(target):
+    if isinstance(target, discord.Role):
+        return target.name
+    if isinstance(target, (discord.Member, discord.User)):
+        return str(target)
+    return str(getattr(target, "id", target))
+
+
+def _truncate_field(value):
+    if len(value) <= EMBED_FIELD_LIMIT:
+        return value
+    return value[:EMBED_FIELD_LIMIT - 3] + "..."
+
+
+def _collect_create_permission_issues(me, category, overwrites):
+    """Collate parent and guild-role gaps that would stop channel creation.
+
+    Discord validates create overwrites against the bot's guild role, not
+    category-effective permissions. A category grant is not enough to set
+    that bit on the new channel.
+    """
+    parent_perms = category.permissions_for(me) if category else me.guild_permissions
+    parent_label = f"category `{category.name}`" if category else "the server"
+    issues = [
+        f"Missing in {parent_label}: `{perm}`"
+        for perm in REQUIRED_PERMISSIONS
+        if not getattr(parent_perms, perm, False)
+    ]
+
+    if me.guild_permissions.administrator:
+        return issues
+
+    guild_perms = me.guild_permissions
+    seen = set()
+    overwrite_count = 0
+    for target, overwrite in overwrites.items():
+        label = _overwrite_target_label(target)
+        allow, deny = overwrite.pair()
+        for perms in (allow, deny):
+            for perm_name, is_set in perms:
+                if not is_set or getattr(guild_perms, perm_name, False):
+                    continue
+                line = f"Needed on the bot's server role: `{perm_name}` for `{label}`"
+                if line in seen:
+                    continue
+                seen.add(line)
+                issues.append(line)
+                overwrite_count += 1
+                if overwrite_count >= MAX_OVERWRITE_ISSUES:
+                    return issues
+    return issues
+
+
+async def _notify_missing_permissions(
+    member,
+    creator_channel,
+    category,
+    guild_name,
+    issues,
+    discord_error=None,
+):
+    detail = "; ".join(issues) if issues else (
+        f"Discord: {discord_error}" if discord_error else "No diagnostic details"
+    )
+    logger.warning(
+        f"Cannot create temp channel for {member} in guild '{guild_name}'. {detail}"
+    )
+
+    embed = discord.Embed()
+    embed.add_field(name="Required", value=REQUIRED_PERMISSIONS_DISPLAY)
+    if issues:
+        embed.add_field(
+            name="Missing",
+            value=_truncate_field("\n".join(f"- {issue}" for issue in issues)),
         )
-        logger.debug(
-            f"Notified {member} of missing permissions in guild '{guild_name}'"
-        )
-        embed = discord.Embed()
-        embed.add_field(name="Required",
-                        value="`view_channel`, `manage_channels`, `manage_roles`, `send_messages`, `manage_messages`, `read_message_history`, `connect`, `move_members`")
-        embed.add_field(name="Missing",
-                        value=f"{', '.join(f'`{perm}`' for perm in missing_permissions)}")
+    elif discord_error:
+        embed.add_field(name="Discord error", value=_truncate_field(discord_error))
+
+    if issues:
         response_text = f"Sorry {member.mention}, I require the following permissions."
         if category:
-            response_text = response_text + f"Make sure they are not overwritten by the category (In this case `{category.name}`)."
-        await creator_channel.send(response_text, embed=embed, delete_after=300)
-        return False
-    return True
+            response_text += (
+                f" Make sure they are not overwritten by the category (In this case `{category.name}`)."
+            )
+    else:
+        response_text = (
+            f"Sorry {member.mention}, I do not have permission to create a channel "
+            f"in the desired category"
+        )
+        response_text += f" (`{category.name}`)." if category else "."
+
+    creator_perms = creator_channel.permissions_for(member.guild.me)
+    if creator_perms.send_messages and creator_perms.embed_links:
+        try:
+            await creator_channel.send(response_text, embed=embed, delete_after=300)
+            logger.debug(
+                f"Notified {member} of create permission issues in guild '{guild_name}'"
+            )
+            return
+        except discord.Forbidden as e:
+            logger.warning(
+                f"Could not notify {member} of missing permissions in creator channel "
+                f"{creator_channel.id} in guild '{guild_name}'. {e}"
+            )
+        except Exception as e:
+            logger.warning(
+                f"Error notifying {member} of missing permissions in guild '{guild_name}'. {e}"
+            )
+            return
+
+    try:
+        await member.send(response_text, embed=embed)
+        logger.debug(f"DM'd {member} about create permission issues in guild '{guild_name}'")
+    except discord.Forbidden as e:
+        logger.warning(
+            f"Could not DM {member} about missing permissions in guild '{guild_name}'. {e}"
+        )
+    except Exception as e:
+        logger.warning(
+            f"Error DM'ing {member} about missing permissions in guild '{guild_name}'. {e}"
+        )
+
+
+async def _notify_unexpected_forbidden(
+    member, creator_channel, category, overwrites, guild_name, discord_error
+):
+    issues = _collect_create_permission_issues(member.guild.me, category, overwrites)
+    await _notify_missing_permissions(
+        member,
+        creator_channel,
+        category,
+        guild_name,
+        issues,
+        discord_error=None if issues else discord_error,
+    )
 
 
 async def _create_temp_voice_channel(creator_channel, category, overwrites, member, guild_name):
@@ -73,25 +186,13 @@ async def _create_temp_voice_channel(creator_channel, category, overwrites, memb
             position=creator_channel.position,
         )
     except discord.Forbidden as e:
+        discord_error = e.text or str(e)
         logger.warning(
-            f"Permission error creating temp channel in category in guild '{guild_name}', "
-            f"notifying user of missing permissions. {e}"
+            f"Permission error creating temp channel in guild '{guild_name}'. {discord_error}"
         )
-        response_text = f"Sorry {member.mention}, I do not have permission to create a channel in the desired category"
-        if category:
-            response_text = response_text + f" (`{category.name}`)."
-        else:
-            response_text = response_text + "."
-        try:
-            await creator_channel.send(response_text, delete_after=300)
-        except discord.Forbidden as e:
-            logger.warning(
-                f"Could not notify {member} of missing permissions in creator channel {creator_channel.id} in guild '{guild_name}'. {e}"
-            )
-        except Exception as e:
-            logger.warning(
-                f"Error notifying {member} of missing permissions in guild '{guild_name}'. {e}"
-            )
+        await _notify_unexpected_forbidden(
+            member, creator_channel, category, overwrites, guild_name, discord_error
+        )
         return None
 
     logger.debug(
@@ -114,7 +215,17 @@ async def _move_member_to_temp_channel(member, temp_channel, guild_name):
     return True
 
 
-async def _finalize_temp_channel(bot, temp_channel, member, db_info, channel_name, guild_name):
+async def _finalize_temp_channel(
+    bot,
+    temp_channel,
+    member,
+    db_info,
+    channel_name,
+    guild_name,
+    creator_channel,
+    category,
+    overwrites,
+):
     try:
         # Could use bot.TempChannelRenamer to avoid rate-limit problems but this does not support user limit yet
         # Fine to use without scheduling as rate limit bucket will never be full immediately after creation
@@ -122,14 +233,45 @@ async def _finalize_temp_channel(bot, temp_channel, member, db_info, channel_nam
             name=channel_name,
             user_limit=db_info.user_limit,
         )
+    except discord.Forbidden as e:
+        discord_error = e.text or str(e)
+        logger.warning(
+            f"Permission error renaming temp channel {temp_channel.id} in guild '{guild_name}'. {discord_error}"
+        )
+        await _notify_unexpected_forbidden(
+            member, creator_channel, category, overwrites, guild_name, discord_error
+        )
+        return None
+    except Exception as e:
+        logger.warning(
+            f"Error renaming temp channel {temp_channel.id} in guild '{guild_name}', handled. {e}"
+        )
+        return None
 
-        # Send control message in channel chat
+    try:
         view = ControlView.for_channel(bot, temp_channel)
         await view.send_control_message(temp_channel, member, channel_name=channel_name)
-        logger.debug(f"Finalized temp channel {temp_channel.id} as '{channel_name}' with control message in guild '{guild_name}'")
+        logger.debug(
+            f"Finalized temp channel {temp_channel.id} as '{channel_name}' "
+            f"with control message in guild '{guild_name}'"
+        )
         return view
+    except discord.Forbidden as e:
+        discord_error = e.text or str(e)
+        logger.warning(
+            f"Permission error sending control message for temp channel {temp_channel.id} "
+            f"in guild '{guild_name}'. {discord_error}"
+        )
+        await _notify_unexpected_forbidden(
+            member, creator_channel, category, overwrites, guild_name, discord_error
+        )
+        return None
     except Exception as e:
-        logger.warning(f"Error finalizing creation of voice channel in guild '{guild_name}', handled. {e}")
+        logger.warning(
+            f"Error sending control message for temp channel {temp_channel.id} "
+            f"in guild '{guild_name}', handled. {e}"
+        )
+        return None
 
 
 async def create_on_join(member, before, after, bot):
@@ -140,11 +282,11 @@ async def create_on_join(member, before, after, bot):
     # Logic flow:
     # 1. Retrieve child settings from db
     # 2. Get category & overwrites, both depend on settings
-    # 3. Notify of missing permissions
-    # 4. Collate overwrites
+    # 3. Collate overwrites
+    # 4. Check all permissions; notify and stop if anything is missing
     # 5. Create channel & move user
     # 6. Add channel to DB
-    # 7. Update channel named based on naming scheme, this is slow and is therefore done last
+    # 7. Rename and send control message (slow; user is already in the channel)
     # 8. Send DM to Owner
     # 9. Send Logs
 
@@ -171,12 +313,16 @@ async def create_on_join(member, before, after, bot):
     category = get_child_category(db_info, creator_channel, bot, guild_name)
     overwrites = get_child_overwrites(db_info, creator_channel, category, guild_name)
 
-    #  ========== 3. Notify of missing permissions ==========
-    if not await _notify_if_missing_guild_permissions(member, creator_channel, category, guild_name):
-        return
-
-    #  ========== 4. Collate overwrites ==========
+    #  ========== 3. Collate overwrites ==========
     collate_temp_channel_overwrites(overwrites, bot.user, member)
+
+    #  ========== 4. Check all permissions ==========
+    issues = _collect_create_permission_issues(member.guild.me, category, overwrites)
+    if issues:
+        await _notify_missing_permissions(
+            member, creator_channel, category, guild_name, issues
+        )
+        return
 
     #  ========== 5. Create channel & move user ==========
     new_temp_channel = await _create_temp_voice_channel(
@@ -192,10 +338,22 @@ async def create_on_join(member, before, after, bot):
     bot.repos.temp_channels.add(new_temp_channel.guild.id, new_temp_channel.id, creator_channel.id, member.id, 0, count, False)
     logger.debug(f"Registered temp channel {new_temp_channel.id} in database for owner {member.id} in guild '{guild_name}'")
 
-    #  ========== 7. Update channel named based on naming scheme (slow, done last) ==========
+    #  ========== 7. Rename and send control message (slow; user is already in the channel) ==========
     channel_name = create_temp_channel_name(bot, new_temp_channel, db_creator_channel_info=db_info)
     logger.debug(f"Generated temp channel name '{channel_name}' for {new_temp_channel.id} in guild '{guild_name}'")
-    control_view = await _finalize_temp_channel(bot, new_temp_channel, member, db_info, channel_name, guild_name)
+    control_view = await _finalize_temp_channel(
+        bot,
+        new_temp_channel,
+        member,
+        db_info,
+        channel_name,
+        guild_name,
+        creator_channel,
+        category,
+        overwrites,
+    )
+    if control_view is None:
+        return
 
     # 8. ======== Send DM to Owner ==========
     await dm_user_on_create(bot, new_temp_channel, member, control_view)
