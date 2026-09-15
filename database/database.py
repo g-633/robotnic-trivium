@@ -55,6 +55,12 @@ class Database:
                 "prior_muted": "INTEGER",
                 "prior_deafened": "INTEGER",
             },
+            "placeholders": {
+                "guild_id": "INTEGER",
+                "placeholder": "TEXT",
+                "replace_text": "TEXT",
+                "role_id": "INTEGER",
+            },
         }
 
         for table_name, columns in tables.items():
