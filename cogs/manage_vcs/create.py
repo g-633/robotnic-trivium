@@ -184,6 +184,7 @@ async def _create_temp_voice_channel(creator_channel, category, overwrites, memb
             category=category,
             overwrites=overwrites,
             position=creator_channel.position,
+            bitrate=creator_channel.bitrate
         )
     except discord.Forbidden as e:
         discord_error = e.text or str(e)
