@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
-from cogs.settings.modals import SettingsModal, LogsModal, PlaceholdersModal
+from cogs.settings.modals import SettingsModal, LogsModal
+from cogs.settings.placeholders.modals import PlaceholderAddModal
 
 
 class SettingsMenuCog(commands.Cog):
@@ -82,7 +83,7 @@ class SettingsMenuCog(commands.Cog):
         self,
         ctx: discord.ApplicationContext,
     ):
-        await ctx.send_modal(PlaceholdersModal(self.bot, ctx))
+        await ctx.send_modal(PlaceholderAddModal(self.bot, ctx))
 
         embed = discord.Embed(
             title="",
