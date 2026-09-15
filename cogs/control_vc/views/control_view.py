@@ -135,14 +135,14 @@ class ControlView(View):
             label="",
             emoji="🧽",
             style=discord.ButtonStyle.danger,
-            row=1,
+            row=2,
             custom_id="clear",
         )
         delete_button = discord.ui.Button(
             label="",
             emoji="🗑️",
             style=discord.ButtonStyle.danger,
-            row=1,
+            row=2,
             custom_id="delete",
         )
         give_button = discord.ui.Button(
@@ -156,7 +156,7 @@ class ControlView(View):
             label="",
             emoji="🔨",
             style=discord.ButtonStyle.danger,
-            row=1,
+            row=2,
             custom_id="ban",
         )
         mute_button = discord.ui.Button(
@@ -173,34 +173,26 @@ class ControlView(View):
             row=1,
             custom_id="deafen",
         )
-        banner_button = discord.ui.Button(
-            label="- - - - - - - - - - - - - - - - - - - -",
-            style=discord.ButtonStyle.secondary,
-            row=2,
-            disabled=True,
-            custom_id="banner",
-        )
 
         # Add buttons dependent on settings
         if "rename" in enabled_controls:
             self.add_item(name_button)
         if "limit" in enabled_controls:
             self.add_item(limit_button)
-        if "ban" in enabled_controls:
-            self.add_item(ban_button)
         if "mute" in enabled_controls:
             self.add_item(mute_button)
         if "deafen" in enabled_controls:
             self.add_item(deafen_button)
         if "give" in enabled_controls:
             self.add_item(give_button)
+        if "ban" in enabled_controls:
+            self.add_item(ban_button)
         if "clear" in enabled_controls:
             self.add_item(clear_button)
         if "delete" in enabled_controls:
             self.add_item(delete_button)
 
         if "lock" in enabled_controls or "hide" in enabled_controls:
-            self.add_item(banner_button)
             self.add_item(public_button)
         if "lock" in enabled_controls:
             self.add_item(lock_button)
@@ -228,13 +220,13 @@ class ControlView(View):
             hide_button.label = "Hide"
             public_button.label = "Public"
             name_button.label = "Rename"
-            limit_button.label = "Edit Limit"
-            clear_button.label = "Clear Msgs"
+            limit_button.label = "Limit"
+            clear_button.label = "Clear"
             delete_button.label = "Delete"
             give_button.label = "Give"
-            ban_button.label = "Ban/Allow User"
-            mute_button.label = "Mute Users"
-            deafen_button.label = "Deafen Users"
+            ban_button.label = "Ban"
+            mute_button.label = "Mute"
+            deafen_button.label = "Deafen"
 
     def _add_dropdown_items(self, enabled_controls, channel_state, row=None):
         # Handles non-state controls
