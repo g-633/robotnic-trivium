@@ -4,39 +4,55 @@ class PlaceholdersRepository:  # bot.repos.placeholders
         self.repos = repos
 
     def add(self, guild_id: int, placeholder: str, replace_text: str, role_id: int = None):
-        self.db.cursor.execute("""
-            DELETE FROM placeholders
-            WHERE guild_id = ? AND placeholder = ?
-        """, (guild_id, placeholder))
+        # Strip and add {}
+        placeholder = placeholder.strip("{}")
+        placeholder = f"{{{placeholder}}}"
         self.db.cursor.execute("""
             INSERT INTO placeholders
             (guild_id, placeholder, replace_text, role_id)
             VALUES (?, ?, ?, ?)
-        """, (guild_id, placeholder, replace_text, role_id))
+        """, (int(guild_id), placeholder, replace_text, role_id))
         self.db.connection.commit()
-        return True
+        return self.db.cursor.lastrowid
 
-    def list(self, guild_id: int):
+    def get(self, guild_id: int, entry_id: int):
         self.db.cursor.execute("""
-            SELECT placeholder, replace_text, role_id
+            SELECT rowid, placeholder, replace_text, role_id
+            FROM placeholders
+            WHERE guild_id = ? AND rowid = ?
+        """, (int(guild_id), int(entry_id)))
+        row = self.db.cursor.fetchone()
+        if row is None:
+            return None
+        return {
+            "id": row[0],
+            "placeholder": row[1],
+            "replace_text": row[2],
+            "role_id": row[3],
+        }
+
+    def get_all(self, guild_id: int):
+        self.db.cursor.execute("""
+            SELECT rowid, placeholder, replace_text, role_id
             FROM placeholders
             WHERE guild_id = ?
-            ORDER BY placeholder
-        """, (guild_id,))
+            ORDER BY rowid
+        """, (int(guild_id),))
         rows = self.db.cursor.fetchall()
         return [
             {
-                "placeholder": row[0],
-                "replace_text": row[1],
-                "role_id": row[2],
+                "id": row[0],
+                "placeholder": row[1],
+                "replace_text": row[2],
+                "role_id": row[3],
             }
             for row in rows
         ]
 
-    def remove(self, guild_id: int, placeholder: str):
+    def remove(self, guild_id: int, entry_id: int):
         self.db.cursor.execute("""
             DELETE FROM placeholders
-            WHERE guild_id = ? AND placeholder = ?
-        """, (guild_id, placeholder))
+            WHERE guild_id = ? AND rowid = ?
+        """, (int(guild_id), int(entry_id)))
         self.db.connection.commit()
         return self.db.cursor.rowcount > 0
