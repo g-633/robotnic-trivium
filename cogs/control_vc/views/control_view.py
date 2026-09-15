@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 ALL_CONTROLS = ("rename", "limit", "clear", "ban", "mute", "deafen", "give", "delete", "lock", "hide")
 STATE_ACTIONS = frozenset({"public", "lock", "hide"})
 SELECT_CUSTOM_IDS = frozenset({"action_select", "state_select"})
+_MODAL_ACTIONS = frozenset({"rename", "limit"})
 
 
 class ControlView(View):
@@ -327,7 +328,9 @@ class ControlView(View):
                 await self._recreate_items(interaction)
             return
 
-        await interaction.response.defer(ephemeral=True)
+        # Everything uses followups however modals require a .response call
+        if action not in _MODAL_ACTIONS:
+            await interaction.response.defer(ephemeral=True)
 
         # Run related method
         await getattr(self, f"{action}_callback")(interaction)
@@ -357,10 +360,10 @@ class ControlView(View):
         await channel_action(bot=self.bot, interaction=interaction, new_state=ChannelState.HIDDEN.value)
 
     async def rename_callback(self, interaction: discord.Interaction):
-        await interaction.followup.send_modal(ChangeNameModal(self.bot, interaction.channel))
+        await interaction.response.send_modal(ChangeNameModal(self.bot, interaction.channel))
 
     async def limit_callback(self, interaction: discord.Interaction):
-        await interaction.followup.send_modal(UserLimitModal(self.bot, interaction.channel))
+        await interaction.response.send_modal(UserLimitModal(self.bot, interaction.channel))
 
     async def clear_callback(self, interaction: discord.Interaction):
         excluded_message_ids = []
