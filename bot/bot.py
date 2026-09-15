@@ -52,10 +52,23 @@ class Bot(discord.AutoShardedBot):
 
         try:
             super().run(self.token)
+        except discord.LoginFailure as e:
+            logger.error(
+                "Could not log in. Invalid or missing TOKEN. "
+                "Please replace 'TOKEN_HERE' with your actual bot token. "
+                f"Error: {e}"
+            )
+            sys.exit(1)
+        except discord.PrivilegedIntentsRequired as e:
+            logger.error(
+                "Could not start: privileged intents are not enabled for this bot "
+                f"in the Discord Developer Portal. Error: {e}"
+            )
+            sys.exit(1)
         except Exception as e:
             logger.error(
-                "Could not log in. Likely invalid TOKEN. "
-                f"Please replace 'TOKEN_HERE' with your actual bot token. Error {e}"
+                "Bot stopped due to a connection or runtime error."
+                f" {type(e).__name__}: {e}"
             )
             sys.exit(1)
 
