@@ -1,7 +1,23 @@
 import discord
 from discord.ext import commands
-from cogs.settings.modals import SettingsModal, LogsModal
+from cogs.settings.modals import ControlsModal, LogsModal
 from cogs.settings.placeholders.modals import PlaceholderAddModal
+
+
+async def placeholder_remove_autocomplete(ctx: discord.AutocompleteContext):
+    entries = ctx.bot.repos.placeholders.get_all(ctx.interaction.guild.id)
+    query = (ctx.value or "").lower()
+    choices = []
+    for entry in entries:
+        print(ctx.interaction.guild)
+        print(ctx.interaction.guild.get_role(entry['role_id']))
+        label = f"'{entry['placeholder']}' → '{entry['replace_text']}' for role: '{ctx.interaction.guild.get_role(entry['role_id']).name}'"
+        if query and query not in label.lower():
+            continue
+        choices.append(discord.OptionChoice(name=label[:100], value=str(entry["id"])))
+        if len(choices) >= 25:
+            break
+    return choices
 
 
 class SettingsMenuCog(commands.Cog):
@@ -35,7 +51,7 @@ class SettingsMenuCog(commands.Cog):
         self,
         ctx: discord.ApplicationContext,
     ):
-        await ctx.send_modal(SettingsModal(self.bot, ctx))
+        await ctx.send_modal(ControlsModal(self.bot, ctx))
 
         embed = discord.Embed(
             title="",
@@ -99,39 +115,52 @@ class SettingsMenuCog(commands.Cog):
         self,
         ctx: discord.ApplicationContext,
     ):
-        placeholders = self.bot.repos.placeholders.list(ctx.guild_id)
+        placeholders = self.bot.repos.placeholders.get_all(ctx.guild.id)
         if not placeholders:
             await ctx.respond("No custom placeholders configured.", ephemeral=True)
             return
 
-        embed = discord.Embed(
-            title="Custom Placeholders",
-            color=discord.Color.blue(),
-        )
+        lines = []
         for entry in placeholders:
             role = ctx.guild.get_role(entry["role_id"]) if entry["role_id"] else None
             role_text = role.mention if role else "`None`"
-            embed.add_field(
-                name=f"`{entry['placeholder']}`",
-                value=f"Replace: `{entry['replace_text']}`\nRole Required: {role_text}",
-                inline=False,
+            lines.append(
+                f"`{entry['placeholder']}` → `{entry['replace_text']}` · Role: {role_text}"
             )
+
+        embed = discord.Embed(
+            title=f"Custom Placeholders ({len(placeholders)})",
+            description="\n".join(lines),
+            color=discord.Color.blue(),
+        )
         await ctx.respond(embed=embed, ephemeral=True)
 
     @placeholder.command(name="remove", description="Remove a custom channel name placeholder")
     async def remove_placeholder(
         self,
         ctx: discord.ApplicationContext,
-        placeholder: discord.Option(
+        entry: discord.Option(
             str,
-            description="The placeholder to remove, e.g. {game}",
+            description="Select the placeholder entry to remove",
+            autocomplete=placeholder_remove_autocomplete,
         ),
     ):
-        removed = self.bot.repos.placeholders.remove(ctx.guild_id, placeholder)
-        if removed:
-            await ctx.respond(f"Removed placeholder `{placeholder}`.", ephemeral=True)
-        else:
-            await ctx.respond(f"No placeholder `{placeholder}` found.", ephemeral=True)
+        try:
+            entry_id = int(entry)
+        except (TypeError, ValueError):
+            await ctx.respond("Invalid selection. Pick an entry from the list.", ephemeral=True)
+            return
+
+        existing = self.bot.repos.placeholders.get(ctx.guild.id, entry_id)
+        if not existing:
+            await ctx.respond("No matching placeholder entry found.", ephemeral=True)
+            return
+
+        self.bot.repos.placeholders.remove(ctx.guild.id, entry_id)
+        await ctx.respond(
+            f"Removed `{existing['placeholder']}` → `{existing['replace_text']}`.",
+            ephemeral=True,
+        )
 
 
 def setup(bot):

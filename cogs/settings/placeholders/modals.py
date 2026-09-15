@@ -3,7 +3,7 @@ import discord
 
 class PlaceholderAddModal(discord.ui.DesignerModal):
     def __init__(self, bot, ctx):
-        super().__init__(title="Edit Placeholders")
+        super().__init__(title="Add Placeholder")
         self.bot = bot
 
         self.placeholder_label = discord.ui.Label(
@@ -43,14 +43,14 @@ class PlaceholderAddModal(discord.ui.DesignerModal):
         role = self.role_required_label.item.values[0] if self.role_required_label.item.values else None
 
         self.bot.repos.placeholders.add(
-            guild_id=interaction.guild_id,
+            guild_id=interaction.guild.id,
             placeholder=placeholder,
             replace_text=replace_text,
             role_id=role.id if role else None,
         )
 
         embed = discord.Embed(
-            title="Submitted!",
+            title="Placeholder Added!",
             description="",
             color=discord.Color.green(),
         )
