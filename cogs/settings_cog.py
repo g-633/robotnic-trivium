@@ -9,8 +9,6 @@ async def placeholder_remove_autocomplete(ctx: discord.AutocompleteContext):
     query = (ctx.value or "").lower()
     choices = []
     for entry in entries:
-        print(ctx.interaction.guild)
-        print(ctx.interaction.guild.get_role(entry['role_id']))
         label = f"'{entry['placeholder']}' → '{entry['replace_text']}' for role: '{ctx.interaction.guild.get_role(entry['role_id']).name}'"
         if query and query not in label.lower():
             continue
