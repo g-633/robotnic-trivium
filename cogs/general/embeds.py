@@ -25,35 +25,50 @@ class HelpEmbed(discord.Embed):
         self.description = (
         )
         self.add_field(
-            name="1️⃣ /setup",
+            name="/setup",
             value=(
                 "Use this menu to create new `Creator Channel`s by clicking the green \"Make new Creator\" button or edit existing `Creator Channel`s using the dropdown list."
             ),
-            inline=False
+            inline=True
         )
         self.add_field(
-            name="2️⃣ /settings controls",
-            value="Allows changing the controls available to channel owners. Every button is togglable and you can choose between labeled buttons, icons or a dropdown menu as controls. You can also adjust if the owner gets pinged on channel creation.",
-            inline=False
+            name="/settings controls",
+            value="Allows changing the controls available to channel owners. Every button is togglable and you can choose between labeled buttons, icons or a dropdown menu as controls.",
+            inline=True
         )
         self.add_field(
-            name="3️⃣ /settings logging",
+            name="/settings logging",
             value="Allows for setting a log channel, if set, selected events will be logged in that channel. To customise the list, simply deselect the ones you would not like to include.",
-            inline=False
+            inline=True
         )
         self.add_field(
-            name="4️⃣ /settings profanity_filter",
+            name="/settings profanity_filter",
             value="While still basic, this setting allows for disabling or only sending an alert if the profanity filter is triggered rather than blocking the action.",
-            inline=False
+            inline=True
         )
         self.add_field(
-            name="5️⃣ /settings dm-owner",
+            name="/settings dm-owner",
             value="Enable or disable DMing channel owners when they create a temporary channel. Defaults to on.",
-            inline=False
+            inline=True
         )
         self.add_field(
-            name="6️⃣ /donate | /support | /website",
+            name="/settings placeholder add",
+            value="Add a custom placeholder for use in the naming scheme of a channel creator",
+            inline=True
+        )
+        self.add_field(
+            name="/settings placeholder list",
+            value="List all custom placeholders for this server",
+            inline=True
+        )
+        self.add_field(
+            name="/settings placeholder remove",
+            value="Remove a custom placeholder for this server",
+            inline=True
+        )
+        self.add_field(
+            name="/donate | /support | /website",
             value="Returns with information on how to support Robotnic's uptime.",
-            inline=False
+            inline=True
         )
         self.set_footer(text="📩 Need more help? Reach out to support below!")
