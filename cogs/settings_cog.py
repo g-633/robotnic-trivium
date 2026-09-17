@@ -123,9 +123,8 @@ class SettingsMenuCog(commands.Cog):
         lines = []
         for entry in placeholders:
             role = ctx.guild.get_role(entry["role_id"]) if entry["role_id"] else None
-            role_text = role.mention if role else "`None`"
             lines.append(
-                f"`{entry['placeholder']}` → `{entry['replace_text']}` · Role: {role_text}"
+                f"`{entry['placeholder']}` → `{entry['replace_text']}` if user has {role.mention if role else "`None`"}"
             )
 
         embed = discord.Embed(

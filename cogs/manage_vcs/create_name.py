@@ -55,6 +55,34 @@ def create_temp_channel_name(bot, temp_channel, db_temp_channel_info=None, db_cr
         )
         new_channel_name = new_channel_name.replace("{count}", str(count))
 
+    # If { is left, there must be another placeholder
+    if "{" in new_channel_name:
+        custom_placeholders = bot.repos.placeholders.get_all(temp_channel.guild.id)
+        # Example for custom_placeholders
+        # [{'id': 1, 'placeholder': '{region}', 'replace_text': 'EU', 'role_id': 932045374594621460}, {'id': 2, 'placeholder': '{region}', 'replace_text': 'AU', 'role_id': 932045364566040626}]
+
+        if len(custom_placeholders) > 0:
+            logger.debug(f"custom placeholders found for {temp_channel.name} ({temp_channel.id}) in '{guild_name}': {custom_placeholders}")
+
+            owner_role_ids = [role.id for role in owner.roles]
+
+            # Run through all placeholders checking for it in the name scheme and if owner has role
+            for custom_placeholder in custom_placeholders:
+                if not custom_placeholder["placeholder"] in new_channel_name:
+                    continue
+                if not custom_placeholder["role_id"] in owner_role_ids:
+                    continue
+
+                new_channel_name = new_channel_name.replace(custom_placeholder["placeholder"], str(custom_placeholder["replace_text"]))
+
+        # Checks if there is still a placeholder left. If so, replace it with "".
+        if "{" in new_channel_name:
+            for custom_placeholder in custom_placeholders:
+                if not custom_placeholder["placeholder"] in new_channel_name:
+                    continue
+
+                new_channel_name = new_channel_name.replace(custom_placeholder["placeholder"], str(""))
+
     # Max char is 100, using 98 just in case
     if len(str(new_channel_name)) > 95:
         logger.debug(
