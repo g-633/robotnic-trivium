@@ -9,7 +9,7 @@ class PlaceholderAddModal(discord.ui.DesignerModal):
         self.placeholder_label = discord.ui.Label(
             "Placeholder",
             discord.ui.TextInput(
-                placeholder="e.g. {game}",
+                placeholder="e.g. {region}",
                 required=True,
                 max_length=100,
             ),
@@ -31,8 +31,8 @@ class PlaceholderAddModal(discord.ui.DesignerModal):
             discord.ui.RoleSelect(
                 min_values=0,
                 max_values=1,
-                required=False,
-                placeholder="Optional role required to use this placeholder",
+                required=True,
+                placeholder="Role required for text replacement",
             ),
         )
         self.add_item(self.role_required_label)
