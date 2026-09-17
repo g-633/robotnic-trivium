@@ -13,7 +13,7 @@ def english_list(items):
     return ", ".join(items[:-1]) + f", and {items[-1]}"
 
 
-class SettingsModal(discord.ui.DesignerModal):
+class ControlsModal(discord.ui.DesignerModal):
     def __init__(self, bot, ctx):
         super().__init__(title="Edit Server Settings")
         self.bot = bot
