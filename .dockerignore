@@ -1,2 +1,12 @@
 .env
 settings.json
+database.db
+logs/
+.git/
+.github/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/

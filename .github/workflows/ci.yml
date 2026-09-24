@@ -90,3 +90,26 @@ jobs:
 
           print(f"import_smoke=OK modules={len(modules)}")
           PY
+
+      - name: Build hardened container image
+        run: |
+          docker build \
+            --build-arg VCS_REF="${GITHUB_SHA}" \
+            --build-arg ROBOTNIC_VERSION="ci-${GITHUB_SHA}" \
+            --tag robotnic-trivium:ci \
+            .
+
+      - name: Verify container image
+        run: |
+          test "$(docker image inspect robotnic-trivium:ci --format '{{.Config.User}}')" = "10001:10001"
+
+          docker run --rm --entrypoint python robotnic-trivium:ci -c \
+            'import discord, topgg, fastapi, uvicorn, nacl, requests, dotenv; print("container_imports=OK")'
+
+          docker run --rm --entrypoint sh robotnic-trivium:ci -c \
+            'test -L /app/database.db &&
+             test -L /app/logs &&
+             test -L /app/settings.json &&
+             test -L /app/.env &&
+             test -f /app/locales/ru.json &&
+             echo container_layout=OK'
