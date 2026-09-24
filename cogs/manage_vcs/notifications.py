@@ -39,17 +39,17 @@ async def dm_user_on_create(bot, temp_channel, member, control_view):
 
 async def send_temp_channel_create_logs(bot, temp_channel, member, guild_name):
     embed = discord.Embed(
-        title="TempChannel Create",
+        title=t("guild_logs.create.title"),
         description="",
         color=discord.Color.green()
     )
     embed.add_field(
-        name="Channel",
+        name=t("guild_logs.create.channel"),
         value=f"`{temp_channel.name}` (`{temp_channel.id}`)",
         inline=False
     )
     embed.add_field(
-        name="User",
+        name=t("guild_logs.create.user"),
         value=f"`{member}` (`{member.id}`)",
         inline=False
     )
@@ -69,17 +69,17 @@ async def send_temp_channel_create_logs(bot, temp_channel, member, guild_name):
 
 async def send_temp_channel_remove_logs(bot, old_temp_channel, member, guild_name):
     embed = discord.Embed(
-        title="TempChannel Removed",
+        title=t("guild_logs.remove.title"),
         description="",
         color=discord.Color.orange()
     )
     embed.add_field(
-        name="Channel",
+        name=t("guild_logs.remove.channel"),
         value=f"`{old_temp_channel.name}` (`{old_temp_channel.id}`)",
         inline=False
     )
     embed.add_field(
-        name="Last Connected User",
+        name=t("guild_logs.remove.last_user"),
         value=f"`{member}` (`{member.id}`)",
         inline=False
     )

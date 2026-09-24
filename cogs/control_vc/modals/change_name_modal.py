@@ -51,24 +51,24 @@ class ChangeNameModal(discord.ui.Modal):
 
             if profanity_check and profanity_check.get("isProfanity"):
                 embed = discord.Embed(
-                    title="TempChannel Blocked Rename",
+                    title=t("guild_logs.profanity_block.title"),
                     description="",
                     color=discord.Color.red()
                 )
-                embed.add_field(name="Channel",
+                embed.add_field(name=t("guild_logs.profanity_block.channel"),
                                 value=f"`{self.channel.name}` (`{self.channel.id})`",
                                 inline=False)
-                embed.add_field(name="User",
+                embed.add_field(name=t("guild_logs.profanity_block.user"),
                                 value=f"`{interaction.user.display_name}` (`{interaction.user.display_name}`, `{interaction.user.id}`)",
                                 inline=False)
-                embed.add_field(name="New Name (Blocked)",
+                embed.add_field(name=t("guild_logs.profanity_block.new_name"),
                                 value=f"`{channel_name}`",
                                 inline=False)
-                embed.add_field(name="Flagged for",
+                embed.add_field(name=t("guild_logs.profanity_block.flagged_for"),
                                 value=f"`{profanity_check["flaggedFor"]}`",
                                 inline=False)
                 embed.timestamp = datetime.datetime.now()
-                embed.set_footer(text="Toggle with /settings")
+                embed.set_footer(text=t("guild_logs.profanity_block.footer"))
                 await self.bot.GuildLogService.send(event="profanity_block", guild=interaction.guild, message=f"", embed=embed)
 
                 if profanity_check_setting == "alert & block":
@@ -107,17 +107,17 @@ class ChangeNameModal(discord.ui.Modal):
 
         # Sends messages in the guild log channel - uses get_guild_logs_channel_id instead of get_guild_settings for read efficiency
         embed = discord.Embed(
-            title="TempChannel Rename",
+            title=t("guild_logs.rename.title"),
             description="",
             color=discord.Color.yellow()
         )
-        embed.add_field(name="Old Channel",
+        embed.add_field(name=t("guild_logs.rename.old_channel"),
                         value=f"`{self.channel.name}` (`{self.channel.id}`)",
                         inline=False)
-        embed.add_field(name="User",
+        embed.add_field(name=t("guild_logs.rename.user"),
                         value=f"`{interaction.user.display_name}` (`{interaction.user.display_name}`, `{interaction.user.id}`)",
                         inline=False)
-        embed.add_field(name="New Name",
+        embed.add_field(name=t("guild_logs.rename.new_name"),
                         value=f"`{channel_name}`",
                         inline=False)
         embed.timestamp = datetime.datetime.now()
