@@ -351,5 +351,34 @@
       "support_server": "Сервер поддержки Robotnic",
       "website": "Сайт Robotnic"
     }
+  },
+  "lifecycle": {
+    "permissions": {
+      "required_field": "Необходимые права",
+      "missing_field": "Не хватает",
+      "discord_error_field": "Ошибка Discord",
+      "missing_category": "В категории `{category}` отсутствует право `{permission}`",
+      "missing_server": "На уровне сервера отсутствует право `{permission}`",
+      "needed_server_role": "Роли бота на сервере требуется право `{permission}` для `{target}`",
+      "missing_response": "{mention}, мне не хватает прав для создания временного канала.",
+      "category_hint": "Проверьте права и overrides категории `{category}`.",
+      "forbidden_response": "{mention}, Discord не разрешил мне создать временный канал.",
+      "category_target": "Целевая категория: `{category}`."
+    },
+    "delete_no_permission": "{mention}, у меня нет прав для удаления этого канала.",
+    "dm": {
+      "title": "Вы управляете своим каналом",
+      "description": "Вы владелец [этого временного канала]({jump_link}).",
+      "controls_title": "Что можно настроить?",
+      "controls_description": "• **Участники:** запрещать доступ, отключать микрофон или звук.\n• **Канал:** менять название и лимит участников.\n• **Доступ:** делать канал открытым, закрытым или скрытым.\n• **Приватность:** разрешать доступ отдельным участникам и ролям.",
+      "stop_button": "Больше не присылать такие сообщения",
+      "acknowledged_button": "Отключено",
+      "undo_button": "Вернуть",
+      "panel_button": "Панель управления"
+    },
+    "application_error": {
+      "permissions": "Мне не хватает прав для выполнения этой команды.",
+      "generic": "Произошла ошибка. Подробности записаны в журнал."
+    }
   }
 }
