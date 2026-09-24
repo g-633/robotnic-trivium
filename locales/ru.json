@@ -1,0 +1,5 @@
+{
+  "common": {
+    "message_disappears": "Это сообщение исчезнет через {seconds} с."
+  }
+}
