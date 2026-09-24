@@ -2,6 +2,7 @@ import logging
 import discord
 from cogs.control_vc.enums import Action
 from cogs.control_vc.owner import claim_or_verify_owner
+from config.i18n import t
 
 logger = logging.getLogger("cogs.control_vc.member_actions.handler")
 
@@ -17,48 +18,48 @@ _MODERATOR_PERMS = [
 
 _RESPONSES = {
     Action.BAN: {
-        "title": "Banned!",
-        "one": "Banned {mention} from your channel.",
-        "many": "Banned {count} member(s)/role(s) from your channel.",
-        "none": "No bannable users or roles were selected.",
+        "title": "control_panel.actions.ban.title",
+        "one": "control_panel.actions.ban.one",
+        "many": "control_panel.actions.ban.many",
+        "none": "control_panel.actions.ban.none",
     },
     Action.ALLOW: {
-        "title": "Allowed!",
-        "one": "Allowed {mention} to your channel.",
-        "many": "Allowed {count} member(s)/role(s) in your channel.",
-        "none": "No allowable users or roles were selected.",
+        "title": "control_panel.actions.allow.title",
+        "one": "control_panel.actions.allow.one",
+        "many": "control_panel.actions.allow.many",
+        "none": "control_panel.actions.allow.none",
     },
     Action.MUTE: {
-        "title": "Muted!",
-        "one": "Muted {mention} in your channel.",
-        "many": "Muted {count} member(s) in your channel.",
-        "none": "No mutable members were selected.",
+        "title": "control_panel.actions.mute.title",
+        "one": "control_panel.actions.mute.one",
+        "many": "control_panel.actions.mute.many",
+        "none": "control_panel.actions.mute.none",
     },
     Action.UNMUTE: {
-        "title": "Unmuted!",
-        "one": "Unmuted {mention} in your channel.",
-        "many": "Unmuted {count} member(s) in your channel.",
-        "none": "No unmuteable members were selected.",
+        "title": "control_panel.actions.unmute.title",
+        "one": "control_panel.actions.unmute.one",
+        "many": "control_panel.actions.unmute.many",
+        "none": "control_panel.actions.unmute.none",
     },
     Action.DEAFEN: {
-        "title": "Deafened!",
-        "one": "Deafened {mention} in your channel.",
-        "many": "Deafened {count} member(s) in your channel.",
-        "none": "No deafenable members were selected.",
+        "title": "control_panel.actions.deafen.title",
+        "one": "control_panel.actions.deafen.one",
+        "many": "control_panel.actions.deafen.many",
+        "none": "control_panel.actions.deafen.none",
     },
     Action.UNDEAFEN: {
-        "title": "Undeafened!",
-        "one": "Undeafened {mention} in your channel.",
-        "many": "Undeafened {count} member(s) in your channel.",
-        "none": "No undeafenable members were selected.",
+        "title": "control_panel.actions.undeafen.title",
+        "one": "control_panel.actions.undeafen.one",
+        "many": "control_panel.actions.undeafen.many",
+        "none": "control_panel.actions.undeafen.none",
     },
 }
 
 _UNMUTE_AND_UNDEAFEN = {
-    "title": "Unmuted and undeafened!",
-    "one": "Unmuted and undeafened {mention}.",
-    "many": "Unmuted and undeafened {count} member(s).",
-    "none": "No members could be unmuted and undeafened.",
+    "title": "control_panel.actions.restore_voice.title",
+    "one": "control_panel.actions.restore_voice.one",
+    "many": "control_panel.actions.restore_voice.many",
+    "none": "control_panel.actions.restore_voice.none",
 }
 
 
@@ -83,11 +84,11 @@ async def _reply_error(interaction, message):
 
 async def _resolve_channel(bot, user):
     if not isinstance(user, discord.Member) or user.voice is None or user.voice.channel is None:
-        return None, f"You are not connected to a voice channel {user.mention}!"
+        return None, t("control_panel.errors.not_connected", mention=user.mention)
 
     channel = user.voice.channel
     if bot.repos.temp_channels.get_info(channel.id) is None:
-        return None, "This is not a controlled voice channel."
+        return None, t("control_panel.errors.not_controlled")
     return channel, None
 
 
@@ -146,7 +147,7 @@ async def handle_action(bot, interaction, actions, targets, channel=None):
             return
 
     if bot.repos.temp_channels.get_info(channel.id) is None:
-        await _reply_error(interaction, "This is not a controlled voice channel.")
+        await _reply_error(interaction, t("control_panel.errors.not_controlled"))
         return
 
     ok, error = await claim_or_verify_owner(bot, channel, user)
@@ -185,15 +186,15 @@ def _result_embed(actions, affected):
         copy = _RESPONSES[actions[0]]
 
     if len(affected) == 1:
-        title = copy["title"]
-        description = copy["one"].format(mention=affected[0].mention)
+        title = t(copy["title"])
+        description = t(copy["one"], mention=affected[0].mention)
     elif len(affected) > 1:
-        title = copy["title"]
-        description = copy["many"].format(count=len(affected))
+        title = t(copy["title"])
+        description = t(copy["many"], count=len(affected))
     else:
-        title = copy["none"]
+        title = t(copy["none"])
         description = ""
 
     embed = discord.Embed(title=title, description=description, color=0x00FF00)
-    embed.set_footer(text="This message will disappear in 10 seconds.")
+    embed.set_footer(text=t("common.message_disappears", seconds=10))
     return embed

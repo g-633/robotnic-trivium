@@ -1,5 +1,7 @@
 import logging
 
+from config.i18n import t
+
 logger = logging.getLogger(__name__)
 
 
@@ -9,7 +11,7 @@ async def claim_or_verify_owner(bot, channel, user):
             f"User '{user}' interacted with control that they are not connected to "
             f"in guild '{channel.guild.name}'."
         )
-        return False, f"You are not connected to this voice channel {user.mention}!"
+        return False, t("control_panel.errors.not_connected", mention=user.mention)
 
     connected_user_ids = [member.id for member in channel.members]
     owner_id = bot.repos.temp_channels.get_info(channel.id).owner_id
@@ -25,7 +27,7 @@ async def claim_or_verify_owner(bot, channel, user):
             f"User '{user}' interacted with control that they don't own "
             f"in guild '{channel.guild.name}'."
         )
-        return False, f"You do not own this temporary channel {user.mention}!"
+        return False, t("control_panel.errors.not_owner", mention=user.mention)
 
     return True, None
 

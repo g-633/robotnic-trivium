@@ -3,6 +3,7 @@ import datetime
 import discord
 import requests
 from cogs.manage_vcs.update_name import update_channel_name_and_control_msg
+from config.i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +23,13 @@ async def check_profanity(session, text: str) -> dict | None:
 
 class ChangeNameModal(discord.ui.Modal):
     def __init__(self, bot, channel):
-        super().__init__(title="Edit Your Channel")
+        super().__init__(title=t("control_panel.rename.modal_title"))
         self.bot = bot
         self.channel = channel
 
         # Define the text inputs
         self.channel_name = discord.ui.InputText(
-            label="Channel Name (Blank = Default)",
+            label=t("control_panel.rename.field_label"),
             placeholder=f"{channel.name}",
             required=False,
             max_length=25
@@ -73,7 +74,7 @@ class ChangeNameModal(discord.ui.Modal):
                 if profanity_check_setting == "alert & block":
                     try:
                         reply = await interaction.followup.send(
-                            "Sorry, that input was flagged for profanity.",
+                            t("control_panel.rename.profanity_blocked"),
                             ephemeral=True,
                             wait=True,
                         )
@@ -93,11 +94,11 @@ class ChangeNameModal(discord.ui.Modal):
             await update_channel_name_and_control_msg(self.bot, [self.channel.id])
 
         embed = discord.Embed(
-            title="Changes Saved",
-            description="Your channel will update as soon as possible. Sometimes Discord will limit updates if they are too frequent, please be patient.",
+            title=t("control_panel.rename.saved_title"),
+            description=t("control_panel.rename.saved_description"),
             color=discord.Color.blue()
         )
-        embed.set_footer(text="This message will disappear in 30 seconds.")
+        embed.set_footer(text=t("common.message_disappears", seconds=30))
         try:
             reply = await interaction.followup.send(embed=embed, ephemeral=True, wait=True)
             await reply.delete(delay=30)
