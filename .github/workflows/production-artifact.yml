@@ -1,0 +1,129 @@
+name: Production container artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref or commit SHA to build
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout requested source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Resolve immutable source metadata
+        id: meta
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          source_sha="$(git rev-parse HEAD)"
+          short_sha="${source_sha:0:12}"
+          lock_sha="$(sha256sum requirements.lock | awk '{print $1}')"
+          base_image="$(awk '/^FROM / {print $2; exit}' Dockerfile)"
+
+          printf 'source_sha=%s\n' "$source_sha" >> "$GITHUB_OUTPUT"
+          printf 'short_sha=%s\n' "$short_sha" >> "$GITHUB_OUTPUT"
+          printf 'lock_sha=%s\n' "$lock_sha" >> "$GITHUB_OUTPUT"
+          printf 'base_image=%s\n' "$base_image" >> "$GITHUB_OUTPUT"
+
+          echo "source_sha=$source_sha"
+          echo "requirements_lock_sha256=$lock_sha"
+          echo "base_image=$base_image"
+
+      - name: Build pinned image
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.meta.outputs.source_sha }}
+          SHORT_SHA: ${{ steps.meta.outputs.short_sha }}
+        run: |
+          set -Eeuo pipefail
+
+          image="robotnic-trivium:${SOURCE_SHA}"
+
+          docker build \
+            --build-arg VCS_REF="${SOURCE_SHA}" \
+            --build-arg ROBOTNIC_VERSION="trivium-${SHORT_SHA}" \
+            --tag "${image}" \
+            .
+
+      - name: Verify image
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.meta.outputs.source_sha }}
+        run: |
+          set -Eeuo pipefail
+
+          image="robotnic-trivium:${SOURCE_SHA}"
+
+          test "$(docker image inspect "${image}" --format '{{.Config.User}}')" = "10001:10001"
+
+          test "$(docker image inspect "${image}" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "${SOURCE_SHA}"
+
+          docker run --rm --entrypoint python "${image}" -c \
+            'import discord, topgg, fastapi, uvicorn, nacl, requests, dotenv; print("container_imports=OK")'
+
+          docker run --rm --entrypoint sh "${image}" -c \
+            'test -L /app/database.db &&
+             test -L /app/logs &&
+             test -L /app/settings.json &&
+             test -L /app/.env &&
+             test -f /app/locales/ru.json &&
+             echo container_layout=OK'
+
+      - name: Export immutable artifact
+        id: export
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.meta.outputs.source_sha }}
+          SHORT_SHA: ${{ steps.meta.outputs.short_sha }}
+          LOCK_SHA: ${{ steps.meta.outputs.lock_sha }}
+          BASE_IMAGE: ${{ steps.meta.outputs.base_image }}
+        run: |
+          set -Eeuo pipefail
+
+          image="robotnic-trivium:${SOURCE_SHA}"
+          archive="robotnic-trivium-${SOURCE_SHA}.docker.tar"
+
+          mkdir -p artifact
+          docker save "${image}" -o "artifact/${archive}"
+
+          archive_sha="$(sha256sum "artifact/${archive}" | awk '{print $1}')"
+          image_id="$(docker image inspect "${image}" --format '{{.Id}}')"
+
+          cat > artifact/MANIFEST.txt <<EOF
+          source_repository=https://github.com/g-633/robotnic-trivium
+          source_sha=${SOURCE_SHA}
+          image=robotnic-trivium:${SOURCE_SHA}
+          image_id=${image_id}
+          base_image=${BASE_IMAGE}
+          requirements_lock_sha256=${LOCK_SHA}
+          archive=${archive}
+          archive_sha256=${archive_sha}
+          runtime_user=10001:10001
+          EOF
+
+          printf '%s  %s\n' "${archive_sha}" "${archive}" > "artifact/${archive}.sha256"
+
+          cat artifact/MANIFEST.txt
+          cat "artifact/${archive}.sha256"
+
+      - name: Upload production artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: robotnic-trivium-${{ steps.meta.outputs.short_sha }}
+          path: artifact/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
