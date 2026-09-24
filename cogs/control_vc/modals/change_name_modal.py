@@ -49,7 +49,7 @@ class ChangeNameModal(discord.ui.Modal):
         if profanity_check_setting is not None:
             profanity_check = await check_profanity(requests, channel_name)
 
-            if profanity_check["isProfanity"]:
+            if profanity_check and profanity_check.get("isProfanity"):
                 embed = discord.Embed(
                     title="TempChannel Blocked Rename",
                     description="",
