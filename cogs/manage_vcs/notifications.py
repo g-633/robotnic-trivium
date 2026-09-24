@@ -2,6 +2,7 @@ import logging
 import datetime
 import discord
 from cogs.manage_vcs.views.dm_owner_button import AcknowledgeButtonView
+from config.i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -17,20 +18,16 @@ async def dm_user_on_create(bot, temp_channel, member, control_view):
     message_jump_link = f"https://discord.com/channels/{temp_channel.guild.id}/{temp_channel.id}/{control_view.message.id}"
 
     embed = discord.Embed(
-        title="You Control Your Channel",
-        description=(
-            f"You are the owner of {message_jump_link}.\n\n"
+        title=t("lifecycle.dm.title"),
+        description=t(
+            "lifecycle.dm.description",
+            jump_link=message_jump_link,
         ),
         color=discord.Color.green(),
     )
     embed.add_field(
-        name="What can you control?",
-        value=(
-            "• **Members:** Ban, mute, or deafen specific members.\n"
-            "• **Channel settings:** Change the name or user limit.\n"
-            "• **Access:** Keep your channel public, lock it, or hide it.\n"
-            "• **Private channels:** Lock/Hide and allow only selected members or roles.\n"
-        ),
+        name=t("lifecycle.dm.controls_title"),
+        value=t("lifecycle.dm.controls_description"),
         inline=False,
     )
 
@@ -42,17 +39,17 @@ async def dm_user_on_create(bot, temp_channel, member, control_view):
 
 async def send_temp_channel_create_logs(bot, temp_channel, member, guild_name):
     embed = discord.Embed(
-        title="TempChannel Create",
+        title=t("guild_logs.create.title"),
         description="",
         color=discord.Color.green()
     )
     embed.add_field(
-        name="Channel",
+        name=t("guild_logs.create.channel"),
         value=f"`{temp_channel.name}` (`{temp_channel.id}`)",
         inline=False
     )
     embed.add_field(
-        name="User",
+        name=t("guild_logs.create.user"),
         value=f"`{member}` (`{member.id}`)",
         inline=False
     )
@@ -72,17 +69,17 @@ async def send_temp_channel_create_logs(bot, temp_channel, member, guild_name):
 
 async def send_temp_channel_remove_logs(bot, old_temp_channel, member, guild_name):
     embed = discord.Embed(
-        title="TempChannel Removed",
+        title=t("guild_logs.remove.title"),
         description="",
         color=discord.Color.orange()
     )
     embed.add_field(
-        name="Channel",
+        name=t("guild_logs.remove.channel"),
         value=f"`{old_temp_channel.name}` (`{old_temp_channel.id}`)",
         inline=False
     )
     embed.add_field(
-        name="Last Connected User",
+        name=t("guild_logs.remove.last_user"),
         value=f"`{member}` (`{member.id}`)",
         inline=False
     )

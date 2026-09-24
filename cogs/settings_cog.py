@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from cogs.settings.modals import ControlsModal, LogsModal
 from cogs.settings.placeholders.modals import PlaceholderAddModal
+from config.i18n import t
 
 
 async def placeholder_remove_autocomplete(ctx: discord.AutocompleteContext):
@@ -9,7 +10,17 @@ async def placeholder_remove_autocomplete(ctx: discord.AutocompleteContext):
     query = (ctx.value or "").lower()
     choices = []
     for entry in entries:
-        label = f"'{entry['placeholder']}' → '{entry['replace_text']}' for role: '{ctx.interaction.guild.get_role(entry['role_id']).name}'"
+        role = (
+            ctx.interaction.guild.get_role(entry["role_id"])
+            if entry["role_id"]
+            else None
+        )
+        label = t(
+            "settings.placeholder.autocomplete",
+            placeholder=entry["placeholder"],
+            replace_text=entry["replace_text"],
+            role_name=role.name if role else "@everyone",
+        )
         if query and query not in label.lower():
             continue
         choices.append(discord.OptionChoice(name=label[:100], value=str(entry["id"])))
@@ -24,27 +35,27 @@ class SettingsMenuCog(commands.Cog):
 
     settings = discord.SlashCommandGroup(
         "settings",
-        "Change Guild Settings",
+        t("settings.group_description"),
         default_member_permissions=discord.Permissions(manage_channels=True),
     )
 
-    @settings.command(description="Select which controls users should have access to by default")
+    @settings.command(description=t("settings.logging_description"))
     async def logging(
-            self,
-            ctx: discord.ApplicationContext,
+        self,
+        ctx: discord.ApplicationContext,
     ):
         await ctx.send_modal(LogsModal(self.bot, ctx))
 
         embed = discord.Embed(
             title="",
-            description=f"Make sure to click \"SUBMIT\" after editing the pop-up menu.",
-            color=discord.Color.yellow()
+            description=t("settings.submit_hint"),
+            color=discord.Color.yellow(),
         )
-        embed.set_footer(text="This message will disappear in 30 seconds.")
+        embed.set_footer(text=t("common.message_disappears", seconds=30))
         reply = await ctx.send_followup(embed=embed, ephemeral=True, wait=True)
         await reply.delete(delay=30)
 
-    @settings.command(description="Select which controls users should have access to by default")
+    @settings.command(description=t("settings.controls_description"))
     async def controls(
         self,
         ctx: discord.ApplicationContext,
@@ -53,46 +64,78 @@ class SettingsMenuCog(commands.Cog):
 
         embed = discord.Embed(
             title="",
-            description=f"Make sure to click \"SUBMIT\" after editing the pop-up menu.",
-            color=discord.Color.yellow()
+            description=t("settings.submit_hint"),
+            color=discord.Color.yellow(),
         )
-        embed.set_footer(text="This message will disappear in 30 seconds.")
+        embed.set_footer(text=t("common.message_disappears", seconds=30))
         reply = await ctx.send_followup(embed=embed, ephemeral=True, wait=True)
         await reply.delete(delay=30)
 
-    @settings.command(description="Set the profanity check in channel names")
+    @settings.command(description=t("settings.profanity_description"))
     async def profanity_filter(
         self,
         ctx: discord.ApplicationContext,
         mode: discord.Option(
             str,
-            choices=["off", "alert", "alert & block"],
-            description="Filter mode, alert will send a profanity alert in the logs channel."
-        )
+            choices=[
+                discord.OptionChoice(
+                    name=t("settings.profanity_choices.off"),
+                    value="off",
+                ),
+                discord.OptionChoice(
+                    name=t("settings.profanity_choices.alert"),
+                    value="alert",
+                ),
+                discord.OptionChoice(
+                    name=t("settings.profanity_choices.alert_block"),
+                    value="alert & block",
+                ),
+            ],
+            description=t("settings.profanity_mode_description"),
+        ),
     ):
         self.bot.repos.guild_settings.edit(ctx.guild_id, profanity_filter=mode)
+        mode_key = {
+            "off": "off",
+            "alert": "alert",
+            "alert & block": "alert_block",
+        }[mode]
         await ctx.respond(
-            f"profanity filter set to `{mode}`"
+            t(
+                "settings.profanity_saved",
+                mode=t(f"settings.profanity_choices.{mode_key}"),
+            )
         )
 
-    @settings.command(name="dm-owner", description="Enable or disable DMing channel owners on create")
+    @settings.command(
+        name="dm-owner",
+        description=t("settings.dm_owner_description"),
+    )
     async def dm_owner(
         self,
         ctx: discord.ApplicationContext,
         enabled: discord.Option(
             bool,
-            description="Whether to DM owners when they create a channel",
+            description=t("settings.dm_owner_option_description"),
         ),
     ):
         self.bot.repos.guild_settings.edit(ctx.guild_id, dm_owner=enabled)
-        await ctx.respond(f"dm-owner set to `{enabled}`")
+        await ctx.respond(
+            t(
+                "settings.dm_owner_saved",
+                state=t("settings.enabled" if enabled else "settings.disabled"),
+            )
+        )
 
     placeholder = settings.create_subgroup(
         "placeholder",
-        "Manage custom channel name placeholders",
+        t("settings.placeholder.group_description"),
     )
 
-    @placeholder.command(name="add", description="Add a custom channel name placeholder")
+    @placeholder.command(
+        name="add",
+        description=t("settings.placeholder.add_description"),
+    )
     async def add_placeholder(
         self,
         ctx: discord.ApplicationContext,
@@ -101,61 +144,88 @@ class SettingsMenuCog(commands.Cog):
 
         embed = discord.Embed(
             title="",
-            description=f"Make sure to click \"SUBMIT\" after editing the pop-up menu.",
-            color=discord.Color.yellow()
+            description=t("settings.submit_hint"),
+            color=discord.Color.yellow(),
         )
-        embed.set_footer(text="This message will disappear in 30 seconds.")
+        embed.set_footer(text=t("common.message_disappears", seconds=30))
         reply = await ctx.send_followup(embed=embed, ephemeral=True, wait=True)
         await reply.delete(delay=30)
 
-    @placeholder.command(name="list", description="List custom channel name placeholders")
+    @placeholder.command(
+        name="list",
+        description=t("settings.placeholder.list_description"),
+    )
     async def list_placeholder(
         self,
         ctx: discord.ApplicationContext,
     ):
         placeholders = self.bot.repos.placeholders.get_all(ctx.guild.id)
         if not placeholders:
-            await ctx.respond("No custom placeholders configured.", ephemeral=True)
+            await ctx.respond(
+                t("settings.placeholder.empty"),
+                ephemeral=True,
+            )
             return
 
         lines = []
         for entry in placeholders:
             role = ctx.guild.get_role(entry["role_id"]) if entry["role_id"] else None
             lines.append(
-                f"`{entry['placeholder']}` → `{entry['replace_text']}` if user has {role.mention if role else "`None`"}"
+                t(
+                    "settings.placeholder.list_line",
+                    placeholder=entry["placeholder"],
+                    replace_text=entry["replace_text"],
+                    role=role.mention if role else "`@everyone`",
+                )
             )
 
         embed = discord.Embed(
-            title=f"Custom Placeholders ({len(placeholders)})",
+            title=t(
+                "settings.placeholder.list_title",
+                count=len(placeholders),
+            ),
             description="\n".join(lines),
             color=discord.Color.blue(),
         )
         await ctx.respond(embed=embed, ephemeral=True)
 
-    @placeholder.command(name="remove", description="Remove a custom channel name placeholder")
+    @placeholder.command(
+        name="remove",
+        description=t("settings.placeholder.remove_description"),
+    )
     async def remove_placeholder(
         self,
         ctx: discord.ApplicationContext,
         entry: discord.Option(
             str,
-            description="Select the placeholder entry to remove",
+            description=t("settings.placeholder.remove_option_description"),
             autocomplete=placeholder_remove_autocomplete,
         ),
     ):
         try:
             entry_id = int(entry)
         except (TypeError, ValueError):
-            await ctx.respond("Invalid selection. Pick an entry from the list.", ephemeral=True)
+            await ctx.respond(
+                t("settings.placeholder.invalid_selection"),
+                ephemeral=True,
+            )
             return
 
         existing = self.bot.repos.placeholders.get(ctx.guild.id, entry_id)
         if not existing:
-            await ctx.respond("No matching placeholder entry found.", ephemeral=True)
+            await ctx.respond(
+                t("settings.placeholder.not_found"),
+                ephemeral=True,
+            )
             return
 
         self.bot.repos.placeholders.remove(ctx.guild.id, entry_id)
         await ctx.respond(
-            f"Removed `{existing['placeholder']}` → `{existing['replace_text']}`.",
+            t(
+                "settings.placeholder.removed",
+                placeholder=existing["placeholder"],
+                replace_text=existing["replace_text"],
+            ),
             ephemeral=True,
         )
 

@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "feat/**"
+      - "fix/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: Install exact runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-deps -r requirements.lock
+
+      - name: Verify Discord package selection
+        run: |
+          python - <<'PY'
+          from importlib import metadata
+
+          assert metadata.version("py-cord") == "2.8.1"
+
+          try:
+              metadata.version("discord.py")
+          except metadata.PackageNotFoundError:
+              pass
+          else:
+              raise SystemExit("discord.py must not be installed")
+
+          print("discord_dependency=OK")
+          PY
+
+      - name: Compile Python sources
+        run: |
+          python -m compileall -q api bot cogs config database main.py scripts/check_i18n.py
+
+      - name: Validate Russian localization
+        run: python scripts/check_i18n.py
+
+      - name: Import localized modules
+        run: |
+          python - <<'PY'
+          import importlib
+
+          modules = (
+              "cogs.creator_menu_cog",
+              "cogs.creator_menu.views",
+              "cogs.creator_menu.embeds",
+              "cogs.creator_menu.modals",
+              "cogs.control_vc_cog",
+              "cogs.control_vc.views.control_view",
+              "cogs.control_vc.views.give_ownership",
+              "cogs.control_vc.member_actions.views",
+              "cogs.control_vc.member_actions.handler.actions",
+              "cogs.control_vc.modals.change_name_modal",
+              "cogs.control_vc.modals.user_limit_modal",
+              "cogs.settings_cog",
+              "cogs.settings.modals",
+              "cogs.settings.placeholders.modals",
+              "cogs.general_cog",
+              "cogs.general.embeds",
+              "cogs.general.views",
+              "cogs.manage_vcs.create",
+              "cogs.manage_vcs.delete",
+              "cogs.manage_vcs.notifications",
+              "cogs.manage_vcs.views.dm_owner_button",
+              "bot.events.errors",
+          )
+
+          for module in modules:
+              importlib.import_module(module)
+
+          print(f"import_smoke=OK modules={len(modules)}")
+          PY
+
+      - name: Build hardened container image
+        run: |
+          docker build \
+            --build-arg VCS_REF="${GITHUB_SHA}" \
+            --build-arg ROBOTNIC_VERSION="ci-${GITHUB_SHA}" \
+            --tag robotnic-trivium:ci \
+            .
+
+      - name: Verify container image
+        run: |
+          test "$(docker image inspect robotnic-trivium:ci --format '{{.Config.User}}')" = "10001:10001"
+
+          docker run --rm --entrypoint python robotnic-trivium:ci -c \
+            'import discord, topgg, fastapi, uvicorn, nacl, requests, dotenv; print("container_imports=OK")'
+
+          docker run --rm --entrypoint sh robotnic-trivium:ci -c \
+            'test -L /app/database.db &&
+             test -L /app/logs &&
+             test -L /app/settings.json &&
+             test -L /app/.env &&
+             test -f /app/locales/ru.json &&
+             echo container_layout=OK'

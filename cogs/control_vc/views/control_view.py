@@ -10,6 +10,7 @@ from cogs.control_vc.modals.user_limit_modal import UserLimitModal
 from cogs.control_vc.modals.change_name_modal import ChangeNameModal
 from cogs.control_vc.views.give_ownership import GiveOwnershipView
 from cogs.control_vc.member_actions.views import BanUserView, DeafenUserView, MuteUserView
+from config.i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -43,11 +44,7 @@ class ControlView(View):
 
     async def send_control_message(self, channel, owner_member, channel_name=None):
         embed = discord.Embed(color=discord.Color.green())
-        embed.description = (
-            "This is a [FOSS](<https://wikipedia.org/wiki/Free_and_open-source_software>) project.\n"
-            "You can contribute [here](<https://github.com/jack-schultz/Robotnic>) or support the dev "
-            "[here](<https://ko-fi.com/jackschultzdev>)."
-        )
+        embed.description = t("control_panel.source_notice")
         embeds = [
             embed,
             ChannelInfoEmbed(self.bot, channel, title=channel_name),
@@ -60,7 +57,7 @@ class ControlView(View):
 
         if guild_settings["mention_owner_bool"]:
             await channel.send(
-                f"{owner_member.mention}, this is *your* vc. Use the message above to control it.",
+                t("control_panel.owner_ping", mention=owner_member.mention),
                 delete_after=1,
             )
 
@@ -82,7 +79,7 @@ class ControlView(View):
         if not enabled_controls:
             self.add_item(
                 discord.ui.Button(
-                    label="No Available Options",
+                    label=t("control_panel.no_options"),
                     style=discord.ButtonStyle.secondary,
                     disabled=True,
                     custom_id="no_options",
@@ -217,17 +214,17 @@ class ControlView(View):
             button.callback = self._callback
 
         if "labels" in control_options:
-            lock_button.label = "Lock"
-            hide_button.label = "Hide"
-            public_button.label = "Public"
-            name_button.label = "Rename"
-            limit_button.label = "Limit"
-            clear_button.label = "Clear"
-            delete_button.label = "Delete"
-            give_button.label = "Give"
-            ban_button.label = "Ban"
-            mute_button.label = "Mute"
-            deafen_button.label = "Deafen"
+            lock_button.label = t("control_panel.buttons.lock")
+            hide_button.label = t("control_panel.buttons.hide")
+            public_button.label = t("control_panel.buttons.public")
+            name_button.label = t("control_panel.buttons.rename")
+            limit_button.label = t("control_panel.buttons.limit")
+            clear_button.label = t("control_panel.buttons.clear")
+            delete_button.label = t("control_panel.buttons.delete")
+            give_button.label = t("control_panel.buttons.give")
+            ban_button.label = t("control_panel.buttons.ban")
+            mute_button.label = t("control_panel.buttons.mute")
+            deafen_button.label = t("control_panel.buttons.deafen")
 
     def _add_dropdown_items(self, enabled_controls, channel_state, row=None):
         # Handles non-state controls
@@ -235,24 +232,24 @@ class ControlView(View):
             def __init__(select_self):
                 options = []
                 if "rename" in enabled_controls:
-                    options.append(discord.SelectOption(value="rename", label="Rename Channel", emoji="🏷️"))
+                    options.append(discord.SelectOption(value="rename", label=t("control_panel.dropdown.rename"), emoji="🏷️"))
                 if "limit" in enabled_controls:
-                    options.append(discord.SelectOption(value="limit", label="Edit User Limit", emoji="🚧"))
+                    options.append(discord.SelectOption(value="limit", label=t("control_panel.dropdown.limit"), emoji="🚧"))
                 if "ban" in enabled_controls:
-                    options.append(discord.SelectOption(value="ban", label="Ban/Allow Users or Roles", emoji="🔨"))
+                    options.append(discord.SelectOption(value="ban", label=t("control_panel.dropdown.ban"), emoji="🔨"))
                 if "mute" in enabled_controls:
-                    options.append(discord.SelectOption(value="mute", label="Mute/Unmute Users", emoji="🔇"))
+                    options.append(discord.SelectOption(value="mute", label=t("control_panel.dropdown.mute"), emoji="🔇"))
                 if "deafen" in enabled_controls:
-                    options.append(discord.SelectOption(value="deafen", label="Deafen/Undeafen Users", emoji="🔕"))
+                    options.append(discord.SelectOption(value="deafen", label=t("control_panel.dropdown.deafen"), emoji="🔕"))
                 if "give" in enabled_controls:
-                    options.append(discord.SelectOption(value="give", label="Give Ownership", emoji="🎁"))
+                    options.append(discord.SelectOption(value="give", label=t("control_panel.dropdown.give"), emoji="🎁"))
                 if "clear" in enabled_controls:
-                    options.append(discord.SelectOption(value="clear", label="Clear Messages", emoji="🧽"))
+                    options.append(discord.SelectOption(value="clear", label=t("control_panel.dropdown.clear"), emoji="🧽"))
                 if "delete" in enabled_controls:
-                    options.append(discord.SelectOption(value="delete", label="Delete Channel", emoji="🗑️"))
+                    options.append(discord.SelectOption(value="delete", label=t("control_panel.dropdown.delete"), emoji="🗑️"))
 
                 select_kwargs = {
-                    "placeholder": "Settings",
+                    "placeholder": t("control_panel.dropdown.settings"),
                     "min_values": 1,
                     "max_values": 1,
                     "options": options,
@@ -270,7 +267,7 @@ class ControlView(View):
                     options.append(
                         discord.SelectOption(
                             value="public",
-                            label="Public",
+                            label=t("control_panel.dropdown.public"),
                             emoji="🌐",
                             default=channel_state == ChannelState.PUBLIC.value,
                         )
@@ -279,7 +276,7 @@ class ControlView(View):
                     options.append(
                         discord.SelectOption(
                             value="lock",
-                            label="Locked",
+                            label=t("control_panel.dropdown.locked"),
                             emoji="🔒",
                             default=channel_state == ChannelState.LOCKED.value,
                         )
@@ -288,14 +285,14 @@ class ControlView(View):
                     options.append(
                         discord.SelectOption(
                             value="hide",
-                            label="Hidden",
+                            label=t("control_panel.dropdown.hidden"),
                             emoji="🙈",
                             default=channel_state == ChannelState.HIDDEN.value,
                         )
                     )
 
                 select_kwargs = {
-                    "placeholder": "Control Access",
+                    "placeholder": t("control_panel.dropdown.access"),
                     "min_values": 1,
                     "max_values": 1,
                     "options": options,
@@ -384,26 +381,29 @@ class ControlView(View):
                     f"in guild '{interaction.guild.name}': {e}"
                 )
                 reply = await interaction.followup.send(
-                    f"Failed, {e}", ephemeral=True, wait=True
+                    t("control_panel.clear.failed", error=e), ephemeral=True, wait=True
                 )
                 await reply.delete(delay=15)
 
         embed = discord.Embed(
-            title="Messages Deleted",
-            description=f"Deleted `{len(messages_to_delete)}` messages.",
+            title=t("control_panel.clear.title"),
+            description=t(
+                "control_panel.clear.description",
+                count=len(messages_to_delete),
+            ),
             color=discord.Color.red(),
         )
-        embed.set_footer(text="This message will disappear in 15 seconds.")
+        embed.set_footer(text=t("common.message_disappears", seconds=15))
         reply = await interaction.followup.send(embed=embed, ephemeral=True, wait=True)
         await reply.delete(delay=15)
 
     async def delete_callback(self, interaction: discord.Interaction):
         embed = discord.Embed(
-            title="Channel Deletion Confirmation",
-            description="Are you sure you want to delete this channel? Reply with 'yes' within 60 seconds to confirm.",
+            title=t("control_panel.delete.title"),
+            description=t("control_panel.delete.confirmation"),
             color=discord.Color.orange(),
         )
-        embed.set_footer(text="Awaiting your response...")
+        embed.set_footer(text=t("control_panel.delete.waiting"))
         reply = await interaction.followup.send(embed=embed, ephemeral=True, wait=True)
         await reply.delete(delay=60)
 
@@ -411,7 +411,7 @@ class ControlView(View):
             return (
                 message.author == interaction.user
                 and message.channel == interaction.channel
-                and message.content.lower() == "yes"
+                and message.content.lower() in {"да", "yes"}
             )
 
         try:
@@ -429,7 +429,7 @@ class ControlView(View):
                 )
                 try:
                     await interaction.followup.send(
-                        f"Sorry {interaction.user.mention}, I do not have permission to delete this channel.",
+                        t("control_panel.delete.no_permission", mention=interaction.user.mention),
                         ephemeral=True,
                     )
                 except (discord.NotFound, discord.HTTPException):
@@ -455,11 +455,11 @@ class ControlView(View):
             )
             try:
                 embed = discord.Embed(
-                    title="Channel Deletion Timed Out",
-                    description="Channel deletion timed out. No action was taken.",
+                    title=t("control_panel.delete.timeout_title"),
+                    description=t("control_panel.delete.timeout_description"),
                     color=discord.Color.red(),
                 )
-                embed.set_footer(text="This message will disappear in 15 seconds.")
+                embed.set_footer(text=t("common.message_disappears", seconds=15))
                 reply = await interaction.followup.send(embed=embed, ephemeral=True, wait=True)
                 await reply.delete(delay=15)
             except (discord.NotFound, discord.HTTPException):

@@ -1,9 +1,11 @@
 import discord
 
+from config.i18n import t
 
-LABEL = "Don’t DM me about channel controls again"
-NEXT_LABEL = "Acknowledged"
-UNDO = "Undo?"
+
+LABEL = t("lifecycle.dm.stop_button")
+NEXT_LABEL = t("lifecycle.dm.acknowledged_button")
+UNDO = t("lifecycle.dm.undo_button")
 
 ACKNOWLEDGE_CUSTOM_ID = "dm_owner_acknowledge"
 ACKNOWLEDGED_CUSTOM_ID = "dm_owner_acknowledged"
@@ -22,7 +24,7 @@ class AcknowledgeButtonView(discord.ui.View):
         self.jump_link = jump_link
         if jump_link:
             self.jump_link_button = discord.ui.Button(
-                label="Control Panel",
+                label=t("lifecycle.dm.panel_button"),
                 url=f"{jump_link}",
                 emoji="⚙️",
                 style=discord.ButtonStyle.link,
@@ -59,7 +61,7 @@ class AcknowledgedButtonView(discord.ui.View):
         self.jump_link = jump_link
         if jump_link:
             self.jump_link_button = discord.ui.Button(
-                label="Control Panel",
+                label=t("lifecycle.dm.panel_button"),
                 url=f"{jump_link}",
                 emoji="⚙️",
                 style=discord.ButtonStyle.link,

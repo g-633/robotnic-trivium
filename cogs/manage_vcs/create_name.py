@@ -1,5 +1,6 @@
 import logging
 import discord
+from config.i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +25,9 @@ def create_temp_channel_name(bot, temp_channel, db_temp_channel_info=None, db_cr
         if owner:
             member_name = owner.nick if owner.nick else owner.display_name
         else:
-            member_name = "Public"
+            member_name = t("naming.no_owner")
             logger.debug(
-                f"Owner not found for temp channel {temp_channel.id} in guild '{guild_name}', using 'Public' for {{user}} placeholder."
+                f"Owner not found for temp channel {temp_channel.id} in guild '{guild_name}', using fallback '{member_name}' for {{user}} placeholder."
             )
         new_channel_name = new_channel_name.replace("{user}", member_name)
 
@@ -39,7 +40,7 @@ def create_temp_channel_name(bot, temp_channel, db_temp_channel_info=None, db_cr
                         activities.append(activity.name)
 
         if len(activities) <= 0:
-            activities.append("General")
+            activities.append(t("naming.no_activity"))
         activities.sort(key=len)
         activity_text = ", ".join(activities)
         logger.debug(

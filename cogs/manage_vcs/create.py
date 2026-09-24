@@ -8,6 +8,7 @@ from cogs.manage_vcs.child_settings import (
 )
 from cogs.manage_vcs.create_name import create_temp_channel_name
 from cogs.manage_vcs.notifications import dm_user_on_create, send_temp_channel_create_logs
+from config.i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +63,24 @@ def _collect_create_permission_issues(me, category, overwrites):
     that bit on the new channel.
     """
     parent_perms = category.permissions_for(me) if category else me.guild_permissions
-    parent_label = f"category `{category.name}`" if category else "the server"
-    issues = [
-        f"Missing in {parent_label}: `{perm}`"
-        for perm in REQUIRED_PERMISSIONS
-        if not getattr(parent_perms, perm, False)
-    ]
+    issues = []
+
+    for perm in REQUIRED_PERMISSIONS:
+        if getattr(parent_perms, perm, False):
+            continue
+        if category:
+            issues.append({
+                "kind": "parent",
+                "scope": "category",
+                "category": category.name,
+                "permission": perm,
+            })
+        else:
+            issues.append({
+                "kind": "parent",
+                "scope": "server",
+                "permission": perm,
+            })
 
     if me.guild_permissions.administrator:
         return issues
@@ -82,15 +95,54 @@ def _collect_create_permission_issues(me, category, overwrites):
             for perm_name, is_set in perms:
                 if not is_set or getattr(guild_perms, perm_name, False):
                     continue
-                line = f"Needed on the bot's server role: `{perm_name}` for `{label}`"
-                if line in seen:
+                key = (perm_name, label)
+                if key in seen:
                     continue
-                seen.add(line)
-                issues.append(line)
+                seen.add(key)
+                issues.append({
+                    "kind": "guild_role",
+                    "permission": perm_name,
+                    "target": label,
+                })
                 overwrite_count += 1
                 if overwrite_count >= MAX_OVERWRITE_ISSUES:
                     return issues
     return issues
+
+
+def _permission_issue_log(issue):
+    if issue["kind"] == "parent":
+        if issue["scope"] == "category":
+            return (
+                f"Missing in category `{issue['category']}`: "
+                f"`{issue['permission']}`"
+            )
+        return f"Missing in the server: `{issue['permission']}`"
+
+    return (
+        f"Needed on the bot's server role: `{issue['permission']}` "
+        f"for `{issue['target']}`"
+    )
+
+
+def _permission_issue_user(issue):
+    if issue["kind"] == "parent":
+        if issue["scope"] == "category":
+            return t(
+                "lifecycle.permissions.missing_category",
+                category=issue["category"],
+                permission=issue["permission"],
+            )
+        return t(
+            "lifecycle.permissions.missing_server",
+            permission=issue["permission"],
+        )
+
+    return t(
+        "lifecycle.permissions.needed_server_role",
+        permission=issue["permission"],
+        target=issue["target"],
+    )
 
 
 async def _notify_missing_permissions(
@@ -101,7 +153,7 @@ async def _notify_missing_permissions(
     issues,
     discord_error=None,
 ):
-    detail = "; ".join(issues) if issues else (
+    detail = "; ".join(_permission_issue_log(issue) for issue in issues) if issues else (
         f"Discord: {discord_error}" if discord_error else "No diagnostic details"
     )
     logger.warning(
@@ -109,27 +161,40 @@ async def _notify_missing_permissions(
     )
 
     embed = discord.Embed()
-    embed.add_field(name="Required", value=REQUIRED_PERMISSIONS_DISPLAY)
+    embed.add_field(name=t("lifecycle.permissions.required_field"), value=REQUIRED_PERMISSIONS_DISPLAY)
     if issues:
         embed.add_field(
-            name="Missing",
-            value=_truncate_field("\n".join(f"- {issue}" for issue in issues)),
+            name=t("lifecycle.permissions.missing_field"),
+            value=_truncate_field(
+                "\n".join(
+                    f"- {_permission_issue_user(issue)}"
+                    for issue in issues
+                )
+            ),
         )
     elif discord_error:
-        embed.add_field(name="Discord error", value=_truncate_field(discord_error))
+        embed.add_field(name=t("lifecycle.permissions.discord_error_field"), value=_truncate_field(discord_error))
 
     if issues:
-        response_text = f"Sorry {member.mention}, I require the following permissions."
+        response_text = t(
+            "lifecycle.permissions.missing_response",
+            mention=member.mention,
+        )
         if category:
-            response_text += (
-                f" Make sure they are not overwritten by the category (In this case `{category.name}`)."
+            response_text += " " + t(
+                "lifecycle.permissions.category_hint",
+                category=category.name,
             )
     else:
-        response_text = (
-            f"Sorry {member.mention}, I do not have permission to create a channel "
-            f"in the desired category"
+        response_text = t(
+            "lifecycle.permissions.forbidden_response",
+            mention=member.mention,
         )
-        response_text += f" (`{category.name}`)." if category else "."
+        if category:
+            response_text += " " + t(
+                "lifecycle.permissions.category_target",
+                category=category.name,
+            )
 
     creator_perms = creator_channel.permissions_for(member.guild.me)
     if creator_perms.send_messages and creator_perms.embed_links:
