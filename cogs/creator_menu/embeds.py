@@ -1,23 +1,41 @@
 import discord
 
+from config.i18n import t
+
 
 class OptionsEmbed(discord.Embed):
     def __init__(self):
         super().__init__(
-            title="Creator Channels' Options",
+            title=t("creator_menu.options.title"),
             color=discord.Color.blue()
         )
-        self.set_footer(text="This message will disappear in 120 seconds")
-        self.add_field(name="Child Name", value="This is the pattern the created channel's names will follow\n> Available Variables: `{user}`, `{count}` & `{activity}`", inline=False)
-        self.add_field(name="User Limit", value="The user limit set on created channels\n> `0` = Unlimited\n> Accepts any integer `0`-`99` inclusive", inline=False)
-        self.add_field(name="Permissions", value="Whether the created channels should have the same permissions as the creator, category or none at all", inline=False)
-        self.add_field(name="Category", value="Which category created channels are placed in\n> If blank, will use the same as the creator", inline=False)
+        self.set_footer(text=t("common.message_disappears", seconds=120))
+        self.add_field(
+            name=t("creator_menu.options.child_name_name"),
+            value=t("creator_menu.options.child_name_value"),
+            inline=False,
+        )
+        self.add_field(
+            name=t("creator_menu.options.user_limit_name"),
+            value=t("creator_menu.options.user_limit_value"),
+            inline=False,
+        )
+        self.add_field(
+            name=t("creator_menu.options.permissions_name"),
+            value=t("creator_menu.options.permissions_value"),
+            inline=False,
+        )
+        self.add_field(
+            name=t("creator_menu.options.category_name"),
+            value=t("creator_menu.options.category_value"),
+            inline=False,
+        )
 
 
 class ListCreatorsEmbed(discord.Embed):
     def __init__(self, guild, bot):
         super().__init__(
-            title="Selected Options for each Creator Channel",
+            title=t("creator_menu.list.title"),
             color=discord.Color.green()
         )
 
@@ -29,18 +47,32 @@ class ListCreatorsEmbed(discord.Embed):
 
             if channel:
                 child_name = creator_info.child_name
-                user_limit = "Unlimited" if creator_info.user_limit == 0 else creator_info.user_limit
-                category = "Same as Creator" if creator_info.child_category_id == 0 else bot.get_channel(creator_info.child_category_id)
+                user_limit = (
+                    t("creator_menu.list.unlimited")
+                    if creator_info.user_limit == 0
+                    else creator_info.user_limit
+                )
+                category = (
+                    t("creator_menu.list.same_as_creator")
+                    if creator_info.child_category_id == 0
+                    else bot.get_channel(creator_info.child_category_id)
+                )
                 if creator_info.child_overwrites == 1:
-                    overwrites = "Copy Creator Channel"
+                    overwrites = t("creator_menu.list.copy_creator_channel")
                 elif creator_info.child_overwrites == 2:
-                    overwrites = "Copy Creator Category"
+                    overwrites = t("creator_menu.list.copy_creator_category")
                 else:  # should be for case 0
-                    overwrites = "None"
+                    overwrites = t("creator_menu.list.no_permissions")
 
-                desc = f"Naming Scheme:\n> `{child_name}`\nUser Limit:\n> `{user_limit}`\nPermission Inheritance:\n> `{overwrites}`\nCategory:\n> `{category}`"
+                desc = t(
+                    "creator_menu.list.description",
+                    child_name=child_name,
+                    user_limit=user_limit,
+                    overwrites=overwrites,
+                    category=category,
+                )
                 self.add_field(name=f"#{i+1}. {channel.mention}", value=desc, inline=True)
 
         # Handle case of no fields. Also prevents error of no embed content
         if len(self.fields) < 1:
-            self.title = "No Creators to list. Make a new one below."
+            self.title = t("creator_menu.list.empty")
