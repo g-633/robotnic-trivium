@@ -31,9 +31,9 @@ class PlaceholderAddModal(discord.ui.DesignerModal):
         self.role_required_label = discord.ui.Label(
             t("settings.placeholder.role_label"),
             discord.ui.RoleSelect(
-                min_values=0,
+                min_values=1,
                 max_values=1,
-                required=False,
+                required=True,
                 placeholder=t("settings.placeholder.role_placeholder"),
             ),
         )
